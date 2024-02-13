@@ -1,42 +1,50 @@
-from PIL import ImageFont
-from PIL import Image
-from PIL import ImageDraw
-import openpyxl
+import datetime
+import time
 from PyPDF2 import PdfReader, PdfWriter
-import fitz
-from io import BytesIO
+import io
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
+from PIL import ImageFont
+import openpyxl
 
-def create_cert(firstname, lastname, midname, id_text):
+def create_cert(lastname, firstname, midname, id_text):
 
-    doc = fitz.open('inputs/cert_without_sign.pdf')
-    page = doc.load_page(0)
+    old_pdf = PdfReader('inputs/cert_without_sign.pdf')
+    sz = old_pdf.pages[0].mediabox
 
-    pdf_width, pdf_height = page.rect[2:]
-    print(pdf_width)
-    print(pdf_height)
+    packet = io.BytesIO()
 
-    img = Image.new('L', size=(int(pdf_width), int(pdf_height)))
-    draw = ImageDraw.Draw(img)
+    font_name = "fonts/static/OpenSans-Regular.ttf"
+    font = ImageFont.truetype(font_name, 18)
+    name = f'{lastname} {firstname} {midname}'
+    name_width, name_height = font.getmask(name).size
 
-    # # Calculate appropriate image DPI based on PDF DPI and dimensions
-    # pdf_dpi = 300  # Assuming horizontal and vertical DPI are equal
-    # img_dpi = int(round(pdf_dpi * img.width / pdf_width))
+    can = canvas.Canvas(packet, pagesize=letter)
 
-    # name = f'{lastname} {firstname} {midname}'
-    # # Choose appropriate font sizes and positions based on your layout
-    # name_font = ImageFont.truetype("fonts/static/OpenSans-Regular.ttf", size=18)
-    # name_color = (0, 0, 0)
-    # name_position = (((img.width - name_font.getlength(name)) / 2), 320)
+    text_x = (sz.width - name_width) / 2
+    text_y = (sz.height - name_height) / 2
+    can.setFont('OpenSansItalic', 12)
+    can.drawString(200, int(text_y) - 210, id_text)
 
-    # draw.text(name_position, name, font=name_font, fill=name_color)
+    can.setFont('OpenSans', 18)
+    can.drawString(int(text_x), int(text_y) - 25 , name)
 
-    # id_font = ImageFont.truetype("fonts/static/OpenSans_SemiCondensed-Italic.ttf", size=12)
-    # id_position = (190, img.height - 95)
-    # id_color = (0, 0, 0)
+    packet.seek(0)
+    can.save()
 
-    # draw.text(id_position, id_text, font=id_font, fill=id_color)
+    new_pdf = PdfReader(packet)
+    existing_pdf = PdfWriter(open("inputs/cert_without_sign.pdf", "rb"))
+    output = PdfWriter()
 
-    # img.save(f'outputs/{lastname}_{firstname[0]}_{midname[0]}.png', format='PNG', dpi=img_dpi, quality=100)
+    page = old_pdf.pages[0]
+    page.merge_page(new_pdf.pages[0])
+    output.add_page(page)
+    output_stream = open(f"outputs/{lastname}_{firstname[0]}._{midname[0]}.pdf", "wb")
+    output.write(output_stream)
+    output_stream.close()
+    print(f'{lastname}_{firstname[0]}._{midname[0]}.pdf was created!')
 
 def extract_elements(row):
     elements = []
@@ -52,4 +60,7 @@ def extract_students():
         create_cert(elements[1], elements[2], elements[3], elements[0])
 
 if __name__ == "__main__":
+    # Register font to support Cyrillic characters
+    pdfmetrics.registerFont(TTFont('OpenSans', 'fonts/static/OpenSans-Regular.ttf'))
+    pdfmetrics.registerFont(TTFont('OpenSansItalic', 'fonts/static/OpenSans_SemiCondensed-Italic.ttf'))
     extract_students()
