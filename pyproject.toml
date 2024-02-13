@@ -12,6 +12,7 @@ pymupdf = "^1.23.22"
 reportlab = "^4.1.0"
 pillow = "^10.2.0"
 openpyxl = "^3.1.2"
+progress = "^1.6"
 
 
 [build-system]
