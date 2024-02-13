@@ -1,5 +1,3 @@
-import datetime
-import time
 from PyPDF2 import PdfReader, PdfWriter
 import io
 from reportlab.pdfgen import canvas
