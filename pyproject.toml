@@ -13,6 +13,8 @@ reportlab = "^4.1.0"
 pillow = "^10.2.0"
 openpyxl = "^3.1.2"
 progress = "^1.6"
+aiofiles = "^23.2.1"
+fpdf = "^1.7.2"
 
 
 [build-system]
