@@ -1,4 +1,4 @@
-import io
+import io, os
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase.ttfonts import TTFont
@@ -10,7 +10,12 @@ import openpyxl
 from concurrent.futures import ThreadPoolExecutor
 from progress.bar import IncrementalBar, Bar
 
-def create_cert(lastname, firstname, midname, id_text):
+def create_cert(lastname, firstname, midname, id_text, path):
+
+    old_pdf = PdfReader('inputs/cert.pdf')
+    old_pdf_page = old_pdf.pages[0]
+    size = old_pdf_page.mediabox
+
     packet = io.BytesIO()
     name = f'{lastname} {firstname} {midname}'
     name_width, name_height = font.getmask(name).size
@@ -34,36 +39,32 @@ def create_cert(lastname, firstname, midname, id_text):
     page.merge_page(new_pdf.pages[0])
     output.add_page(page)
 
-    with open(f"outputs/{lastname}_{firstname[0]}_{midname[0]}.pdf", "wb") as output_stream:
+    with open(f"{path}/{lastname}_{firstname[0]}_{midname[0]}.pdf", "wb") as output_stream:
         output.write(output_stream)
 
     bar.next()
 
-def process_row(row):
-    elems = [str(cell.value) for cell in row]
-    create_cert(elems[1], elems[2], elems[3], elems[0])
-
-def extract_students():
-    global old_pdf, font, size
+if __name__ == "__main__":
 
     pdfmetrics.registerFont(TTFont('OpenSans', 'fonts/OpenSans-Regular.ttf'))
     pdfmetrics.registerFont(TTFont('OpenSansItalic', 'fonts/OpenSans_SemiCondensed-Italic.ttf'))
-    old_pdf = PdfReader('inputs/cert.pdf')
-    old_pdf_page = old_pdf.pages[0]
-    size = old_pdf_page.mediabox
+
     font = ImageFont.truetype("fonts/OpenSans-Regular.ttf", 18)
 
-    with ThreadPoolExecutor() as executor:
-        for row in sheet.iter_rows():
-            executor.submit(process_row, row)
-
-if __name__ == "__main__":
     start = time.time()
-
     wb = openpyxl.load_workbook('inputs/students.xlsx')
-    sheet = wb['Лист1']
-    bar = Bar('Progress: ', max=sheet.max_row, fill='*', suffix='%(percent)d%%')
-    bar.update()
-    extract_students()
+
+    for item in wb.sheetnames:
+        path = f'outputs/{item}'
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        sheet = wb[item]
+        bar = Bar('Progress: ', max=sheet.max_row, fill='*', suffix='%(percent)d%%')
+        bar.update()
+        for row in sheet.iter_rows():
+            elements = [str(cell.value) for cell in row]
+            create_cert(elements[1], elements[2], elements[3], elements[0], path)
 
     print(f'Выполнилось за {time.time() - start} секунд')
+
